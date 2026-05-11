@@ -53,17 +53,108 @@ Exports a `statistics` interface with:
 
 ## Prerequisites
 
+Install the tools required for the languages you want to build. All five are needed to compose `the-calculater`.
+
+### All components
 ```sh
+# Rust toolchain + WASI target
 rustup target add wasm32-wasip2
+
+# WASM inspection tool
 cargo install --locked wasm-tools
-cargo install wac-cli          # for composing the-calculater
+
+# Component composition tool (wac)
+cargo install wac-cli
+```
+
+### `arithmetic-calculator` and `trigonometric-calculator` (Rust)
+No additional tools — the Rust toolchain above is sufficient.
+
+### `moddiv` (TypeScript)
+Requires [Node.js](https://nodejs.org/) ≥ 18. npm dependencies (`jco`, `typescript`) are installed locally via `npm install`.
+
+### `logaritmic-calculater` (C# / .NET)
+Requires [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0).
+
+### `statistics-calculator` (Python)
+Requires Python 3.10+ and `componentize-py`:
+```sh
+pip install componentize-py
 ```
 
 ## Build
 
-### `the-calculater` (composed)
+The five sub-components must be built before the composed `the-calculater` binary can be produced. Follow steps 1–5 in order, then run the composition in step 6.
 
-First build all five sub-components (see below), then:
+### Step 1 — Rust: arithmetic-calculator, trigonometric-calculator, and the-calculater shell
+
+The Cargo workspace at the repo root builds all three Rust crates at once:
+
+```sh
+cargo build --target wasm32-wasip2 --release
+```
+
+Output (in the shared `target/` directory):
+
+```
+target/wasm32-wasip2/release/arithmetic_calculator.wasm
+target/wasm32-wasip2/release/trigonometric_calculator.wasm
+target/wasm32-wasip2/release/the_calculater.wasm   ← shell (imports not yet satisfied)
+```
+
+To build a single crate:
+```sh
+cargo build -p arithmetic-calculator --target wasm32-wasip2 --release
+cargo build -p trigonometric-calculator --target wasm32-wasip2 --release
+cargo build -p the-calculater --target wasm32-wasip2 --release
+```
+
+### Step 2 — TypeScript: moddiv
+
+```sh
+cd moddiv
+npm install          # installs jco and typescript locally
+npm run build        # tsc (TS → JS) then jco componentize (JS → WASM)
+cd ..
+```
+
+Output: `moddiv/moddiv.wasm`
+
+### Step 3 — C#: logaritmic-calculater
+
+```sh
+cd logaritmic-calculater
+dotnet build -c Release
+cd ..
+```
+
+Output: `logaritmic-calculater/bin/Release/net10.0/wasi-wasm/native/logaritmic-calculater.wasm`
+
+### Step 4 — Python: statistics-calculator
+
+```sh
+cd statistics-calculator
+componentize-py --wit-path wit/component.wit --world statistics-calculator componentize app -o statistics-calculator.wasm
+cd ..
+```
+
+Output: `statistics-calculator/statistics-calculator.wasm`
+
+### Step 5 — Verify sub-components (optional)
+
+Confirm each sub-component exports the expected interface:
+
+```sh
+wasm-tools component wit target/wasm32-wasip2/release/arithmetic_calculator.wasm
+wasm-tools component wit target/wasm32-wasip2/release/trigonometric_calculator.wasm
+wasm-tools component wit moddiv/moddiv.wasm
+wasm-tools component wit logaritmic-calculater/bin/Release/net10.0/wasi-wasm/native/logaritmic-calculater.wasm
+wasm-tools component wit statistics-calculator/statistics-calculator.wasm
+```
+
+### Step 6 — Compose: the-calculater
+
+`wac plug` wires the exports of each sub-component into the matching imports of the shell, producing a fully self-contained binary. All five sub-components are embedded; only WASI host imports remain external.
 
 ```sh
 wac plug \
@@ -76,48 +167,12 @@ wac plug \
   -o the-calculater/the-calculater.wasm
 ```
 
-### Rust components (arithmetic + trigonometric + the-calculater shell)
+Output: `the-calculater/the-calculater.wasm`
 
-From the repo root (the Cargo workspace builds all three):
-
-```sh
-cargo build --target wasm32-wasip2 --release
-```
-
-Output binaries (shared workspace `target/` at repo root):
-
-```
-target/wasm32-wasip2/release/arithmetic_calculator.wasm
-target/wasm32-wasip2/release/trigonometric_calculator.wasm
-target/wasm32-wasip2/release/the_calculater.wasm   # shell (unlinked)
-```
-
-### `moddiv` (TypeScript)
+Verify the composed component exposes only the single `calculate` export and no sub-component imports:
 
 ```sh
-cd moddiv
-npm install
-npm run build   # compiles TypeScript → JS, then componentizes → moddiv.wasm
-```
-
-### `logaritmic-calculater` (C# / .NET 10)
-
-Requires [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0).
-
-```sh
-cd logaritmic-calculater
-dotnet build -c Release
-# output: bin/Release/net10.0/wasi-wasm/native/logaritmic-calculater.wasm
-```
-
-### `statistics-calculator` (Python)
-
-Requires Python 3.10+ and `componentize-py`.
-
-```sh
-pip install componentize-py
-cd statistics-calculator
-componentize-py --wit-path wit/component.wit --world statistics-calculator componentize app -o statistics-calculator.wasm
+wasm-tools component wit the-calculater/the-calculater.wasm | grep -E "^  (import|export)"
 ```
 
 ## Run with wasmtime
@@ -162,13 +217,5 @@ wasmtime run --invoke 'calculate("unknown(1)")' the-calculater/the-calculater.wa
 # → "Error: Unknown function: 'unknown'"
 ```
 
-## Inspect
 
-```sh
-wasm-tools component wit the-calculater/the-calculater.wasm
-wasm-tools component wit target/wasm32-wasip2/release/arithmetic_calculator.wasm
-wasm-tools component wit target/wasm32-wasip2/release/trigonometric_calculator.wasm
-wasm-tools component wit moddiv/moddiv.wasm
-wasm-tools component wit logaritmic-calculater/bin/Release/net10.0/wasi-wasm/native/logaritmic-calculater.wasm
-wasm-tools component wit statistics-calculator/statistics-calculator.wasm
-```
+
