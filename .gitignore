@@ -4,6 +4,7 @@ moddiv/moddiv.js
 moddiv/moddiv.wasm
 logaritmic-calculater/bin
 logaritmic-calculater/obj
+the-calculater/the-calculater.wasm
 statistics-calculator/wit_world
 statistics-calculator/statistics-calculator.wasm
 statistics-calculator/__pycache__

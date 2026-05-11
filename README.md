@@ -1,8 +1,26 @@
 # Scientific Calculator – WASM Components
 
-WebAssembly components built in Rust, TypeScript, and C#, following the [Bytecode Alliance guides](https://component-model.bytecodealliance.org/language-support/).
+WebAssembly components built in Rust, TypeScript, C#, and Python, following the [Bytecode Alliance guides](https://component-model.bytecodealliance.org/language-support/).
 
 ## Components
+
+### `the-calculater` (Rust shell — composed from all five sub-components)
+A composed WASM component that bundles all five calculators into a single binary.
+Exports the `docs:the-calculater/calculator@0.1.0` interface with one method:
+
+```
+calculate(expr: string) -> string
+```
+
+Accepts function-call style expressions and routes them to the correct sub-component:
+
+| Expression | Routes to |
+|---|---|
+| `add(2,3)` `subtract(5,1)` `multiply(2,4)` `divide(9,3)` | arithmetic |
+| `sin(45)` `cos(60)` `tan(30)` `arctan(1)` | trigonometric |
+| `mod(7,3)` `div(7,3)` | moddiv |
+| `e()` `ln(2.718)` | logaritmic |
+| `sum(1,2,3)` `avg(1,2,3,4)` | statistics |
 
 ### `arithmetic-calculator` (Rust, wasm32-wasip2)
 Exports an `arithmetic` interface with:
@@ -38,21 +56,32 @@ Exports a `statistics` interface with:
 ```sh
 rustup target add wasm32-wasip2
 cargo install --locked wasm-tools
+cargo install wac-cli          # for composing the-calculater
 ```
 
 ## Build
 
-From the repo root (the Cargo workspace builds both components):
+### `the-calculater` (composed)
+
+First build all five sub-components (see below), then:
+
+```sh
+wac plug \
+  --plug target/wasm32-wasip2/release/arithmetic_calculator.wasm \
+  --plug target/wasm32-wasip2/release/trigonometric_calculator.wasm \
+  --plug moddiv/moddiv.wasm \
+  --plug logaritmic-calculater/bin/Release/net10.0/wasi-wasm/native/logaritmic-calculater.wasm \
+  --plug statistics-calculator/statistics-calculator.wasm \
+  target/wasm32-wasip2/release/the_calculater.wasm \
+  -o the-calculater/the-calculater.wasm
+```
+
+### Rust components (arithmetic + trigonometric + the-calculater shell)
+
+From the repo root (the Cargo workspace builds all three):
 
 ```sh
 cargo build --target wasm32-wasip2 --release
-```
-
-Or build individually:
-
-```sh
-cargo build -p arithmetic-calculator --target wasm32-wasip2 --release
-cargo build -p trigonometric-calculator --target wasm32-wasip2 --release
 ```
 
 Output binaries (shared workspace `target/` at repo root):
@@ -60,6 +89,7 @@ Output binaries (shared workspace `target/` at repo root):
 ```
 target/wasm32-wasip2/release/arithmetic_calculator.wasm
 target/wasm32-wasip2/release/trigonometric_calculator.wasm
+target/wasm32-wasip2/release/the_calculater.wasm   # shell (unlinked)
 ```
 
 ### `moddiv` (TypeScript)
@@ -76,8 +106,8 @@ Requires [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0).
 
 ```sh
 cd logaritmic-calculater
-dotnet build
-# output: bin/Debug/net10.0/wasi-wasm/native/logaritmic-calculater.wasm
+dotnet build -c Release
+# output: bin/Release/net10.0/wasi-wasm/native/logaritmic-calculater.wasm
 ```
 
 ### `statistics-calculator` (Python)
@@ -93,9 +123,10 @@ componentize-py --wit-path wit/component.wit --world statistics-calculator compo
 ## Inspect
 
 ```sh
+wasm-tools component wit the-calculater/the-calculater.wasm
 wasm-tools component wit target/wasm32-wasip2/release/arithmetic_calculator.wasm
 wasm-tools component wit target/wasm32-wasip2/release/trigonometric_calculator.wasm
 wasm-tools component wit moddiv/moddiv.wasm
-wasm-tools component wit logaritmic-calculater/bin/Debug/net10.0/wasi-wasm/native/logaritmic-calculater.wasm
+wasm-tools component wit logaritmic-calculater/bin/Release/net10.0/wasi-wasm/native/logaritmic-calculater.wasm
 wasm-tools component wit statistics-calculator/statistics-calculator.wasm
 ```
