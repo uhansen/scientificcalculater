@@ -28,6 +28,11 @@ Exports a `logaritmic` interface with:
 - `e() -> f64` — Euler's number (≈ 2.71828…)
 - `ln(x: f64) -> f64` — natural logarithm of x
 
+### `statistics-calculator` (Python, componentize-py)
+Exports a `statistics` interface with:
+- `sum(numbers: list<f64>) -> f64` — sum of a list of numbers
+- `avg(numbers: list<f64>) -> f64` — arithmetic mean (returns 0.0 for empty list)
+
 ## Prerequisites
 
 ```sh
@@ -75,6 +80,16 @@ dotnet build
 # output: bin/Debug/net10.0/wasi-wasm/native/logaritmic-calculater.wasm
 ```
 
+### `statistics-calculator` (Python)
+
+Requires Python 3.10+ and `componentize-py`.
+
+```sh
+pip install componentize-py
+cd statistics-calculator
+componentize-py --wit-path wit/component.wit --world statistics-calculator componentize app -o statistics-calculator.wasm
+```
+
 ## Inspect
 
 ```sh
@@ -82,4 +97,5 @@ wasm-tools component wit target/wasm32-wasip2/release/arithmetic_calculator.wasm
 wasm-tools component wit target/wasm32-wasip2/release/trigonometric_calculator.wasm
 wasm-tools component wit moddiv/moddiv.wasm
 wasm-tools component wit logaritmic-calculater/bin/Debug/net10.0/wasi-wasm/native/logaritmic-calculater.wasm
+wasm-tools component wit statistics-calculator/statistics-calculator.wasm
 ```

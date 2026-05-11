@@ -4,3 +4,10 @@ moddiv/moddiv.js
 moddiv/moddiv.wasm
 logaritmic-calculater/bin
 logaritmic-calculater/obj
+statistics-calculator/wit_world
+statistics-calculator/statistics-calculator.wasm
+statistics-calculator/__pycache__
+statistics-calculator/componentize_py_async_support
+statistics-calculator/componentize_py_runtime.pyi
+statistics-calculator/componentize_py_types.py
+statistics-calculator/poll_loop.py
