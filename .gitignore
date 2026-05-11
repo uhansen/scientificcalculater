@@ -12,3 +12,7 @@ statistics-calculator/componentize_py_async_support
 statistics-calculator/componentize_py_runtime.pyi
 statistics-calculator/componentize_py_types.py
 statistics-calculator/poll_loop.py
+
+# Spin app build artifacts
+thecalculaterspin/thecalculaterspin-composed.wasm
+thecalculaterspin/.spin/

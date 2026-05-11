@@ -10,6 +10,7 @@ WebAssembly components built in Rust, TypeScript, C#, and Python, following the 
 | `logaritmic-calculater` | C# / .NET 10 | `e` `ln` |
 | `statistics-calculator` | Python | `sum` `avg` |
 | `the-calculater` | Composed (all 5) | `calculate(string) → string` |
+| `thecalculaterspin` | Rust (Spin HTTP app) | HTTP API wrapping `the-calculater` |
 
 ## Components
 
@@ -228,3 +229,77 @@ wasmtime run --invoke 'calculate("unknown(1)")' the-calculater/the-calculater.wa
 
 
 
+
+## Run with Spin (`thecalculaterspin`)
+
+`thecalculaterspin` is a Spin v4 HTTP application that exposes `the-calculater` as an HTTP endpoint. Send a calculator expression via `?expr=` query parameter or as a plain-text POST body.
+
+### Prerequisites
+
+```sh
+# Install Spin v4
+curl -fsSL https://spinframework.dev/downloads/install.sh | bash
+# or manually: https://github.com/spinframework/spin/releases
+
+# Install wac (WASM composition tool)
+cargo install wac-cli
+```
+
+### Build the Spin app
+
+```sh
+cd thecalculaterspin
+
+# 1. Compile to WASM (wasm32-wasip2)
+cargo build --target wasm32-wasip2 --release
+
+# 2. Compose with the-calculater
+wac plug --plug ../the-calculater/the-calculater.wasm \
+  target/wasm32-wasip2/release/thecalculaterspin.wasm \
+  -o thecalculaterspin-composed.wasm
+```
+
+Or use `spin build` to run both steps via the build command in `spin.toml`:
+
+```sh
+cd thecalculaterspin
+spin build
+```
+
+### Run and call the HTTP API
+
+```sh
+cd thecalculaterspin
+spin up --listen 127.0.0.1:3000
+```
+
+In another terminal:
+
+```sh
+# Arithmetic
+curl "http://127.0.0.1:3000/?expr=add(2,3)"         # → 5
+curl "http://127.0.0.1:3000/?expr=subtract(10,4)"   # → 6
+curl "http://127.0.0.1:3000/?expr=multiply(6,7)"    # → 42
+curl "http://127.0.0.1:3000/?expr=divide(9,3)"      # → 3
+
+# Trigonometric (degrees)
+curl "http://127.0.0.1:3000/?expr=sin(30)"          # → 0.5
+curl "http://127.0.0.1:3000/?expr=cos(60)"          # → 0.5
+curl "http://127.0.0.1:3000/?expr=tan(45)"          # → 1
+curl "http://127.0.0.1:3000/?expr=arctan(1)"        # → 45
+
+# Modulo / integer division
+curl "http://127.0.0.1:3000/?expr=mod(10,3)"        # → 1
+curl "http://127.0.0.1:3000/?expr=div(10,3)"        # → 3
+
+# Logarithmic
+curl "http://127.0.0.1:3000/?expr=e()"              # → 2.718281828...
+curl "http://127.0.0.1:3000/?expr=ln(2.718281828)"  # → ~1
+
+# Statistics
+curl "http://127.0.0.1:3000/?expr=sum(1,2,3,4,5)"  # → 15
+curl "http://127.0.0.1:3000/?expr=avg(1,2,3,4,5)"  # → 3
+
+# POST body (URL-encoded expression as plain text)
+curl -X POST "http://127.0.0.1:3000/" --data "multiply(6,7)"  # → 42
+```
