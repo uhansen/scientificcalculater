@@ -1,1 +1,4 @@
 /target
+moddiv/node_modules
+moddiv/moddiv.js
+moddiv/moddiv.wasm
