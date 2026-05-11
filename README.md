@@ -1,6 +1,6 @@
 # Scientific Calculator – WASM Components
 
-WebAssembly components built in Rust and TypeScript, following the [Bytecode Alliance guides](https://component-model.bytecodealliance.org/language-support/).
+WebAssembly components built in Rust, TypeScript, and C#, following the [Bytecode Alliance guides](https://component-model.bytecodealliance.org/language-support/).
 
 ## Components
 
@@ -22,6 +22,11 @@ Exports a `trigonometric` interface with (angles in degrees):
 Exports a `moddiv` interface with:
 - `mod(x: f64, y: f64) -> f64` — remainder of x divided by y
 - `div(x: f64, y: f64) -> f64` — quotient of x divided by y
+
+### `logaritmic-calculater` (C# / .NET 10, componentize-dotnet)
+Exports a `logaritmic` interface with:
+- `e() -> f64` — Euler's number (≈ 2.71828…)
+- `ln(x: f64) -> f64` — natural logarithm of x
 
 ## Prerequisites
 
@@ -52,12 +57,22 @@ target/wasm32-wasip2/release/arithmetic_calculator.wasm
 target/wasm32-wasip2/release/trigonometric_calculator.wasm
 ```
 
-### moddiv (TypeScript)
+### `moddiv` (TypeScript)
 
 ```sh
 cd moddiv
 npm install
 npm run build   # compiles TypeScript → JS, then componentizes → moddiv.wasm
+```
+
+### `logaritmic-calculater` (C# / .NET 10)
+
+Requires [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0).
+
+```sh
+cd logaritmic-calculater
+dotnet build
+# output: bin/Debug/net10.0/wasi-wasm/native/logaritmic-calculater.wasm
 ```
 
 ## Inspect
@@ -66,4 +81,5 @@ npm run build   # compiles TypeScript → JS, then componentizes → moddiv.wasm
 wasm-tools component wit target/wasm32-wasip2/release/arithmetic_calculator.wasm
 wasm-tools component wit target/wasm32-wasip2/release/trigonometric_calculator.wasm
 wasm-tools component wit moddiv/moddiv.wasm
+wasm-tools component wit logaritmic-calculater/bin/Debug/net10.0/wasi-wasm/native/logaritmic-calculater.wasm
 ```
