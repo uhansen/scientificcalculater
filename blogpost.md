@@ -159,3 +159,134 @@ wasmtime run --invoke 'calculate("add(2,2)")' the-calculater/the-calculater.wasm
 ```
 
 The promise of WebAssembly was always portability. The Component Model extends that promise from *run anywhere* to *compose with anything*.
+
+## Deploying as a Spin HTTP Application
+
+Building a composed WASM binary is satisfying, but invoking it with `wasmtime run --invoke` from the command line is not how most software gets used. To make the calculator accessible as a real service, we wrap it in a [Spin](https://spinframework.dev) HTTP application.
+
+### What is Spin?
+
+Spin is an open-source framework from Fermyon for building serverless-style applications on top of WebAssembly. You write a handler function; Spin provides the HTTP server, the WASI host implementation, and the runtime plumbing. The key property for this project: **Spin components are WASM components**. A Spin HTTP app is just a WASM component that exports `wasi:http/handler`. That makes it a first-class participant in the Component Model.
+
+### The architecture
+
+```
+HTTP request
+     │
+     ▼
+┌─────────────────────────────┐
+│  thecalculaterspin          │  ← Spin HTTP app (Rust, wasm32-wasip2)
+│  exports wasi:http/handler  │
+│  imports docs:the-calculater│
+└────────────┬────────────────┘
+             │  (composed in by wac plug)
+             ▼
+┌─────────────────────────────┐
+│  the-calculater.wasm        │  ← composed component (5 sub-components)
+│  arithmetic · trig · moddiv │
+│  logarithmic · statistics   │
+└─────────────────────────────┘
+```
+
+The Spin app imports the `calculate(string) → string` interface from `the-calculater`. At build time, `wac plug` fills that import by embedding the composed calculator binary directly into the Spin component. The resulting binary is fully self-contained: Spin only needs to provide the WASI host APIs.
+
+### Implementing the handler
+
+The handler is a Rust async function decorated with `#[http_service]` from `spin-sdk 6.0.0`:
+
+```rust
+use spin_sdk::http::body::IncomingBodyExt;
+use spin_sdk::http::{IntoResponse, Request, StatusCode};
+use spin_sdk::{http_service, wit_bindgen};
+
+wit_bindgen::generate!({
+    path: "wit",
+    world: "calculator-import",
+    generate_all,
+});
+
+#[http_service]
+async fn handle(req: Request) -> impl IntoResponse {
+    let expr = get_expr(req).await;
+    let result = docs::the_calculater::calculator::calculate(&expr);
+    (StatusCode::OK, result)
+}
+```
+
+`wit_bindgen::generate!` reads the local WIT file that declares the import of `docs:the-calculater/calculator@0.1.0`, and generates the Rust bindings. The `calculate()` call looks like a normal function call — the Component Model handles the rest.
+
+Expressions can arrive as a `?expr=` query parameter or as a plain-text POST body:
+
+```rust
+async fn get_expr(req: Request) -> String {
+    if let Some(query) = req.uri().query() {
+        for pair in query.split('&') {
+            if let Some(value) = pair.strip_prefix("expr=") {
+                return urlencoded_decode(value);
+            }
+        }
+    }
+    let bytes = req.into_body().bytes().await.unwrap_or_default();
+    String::from_utf8_lossy(&bytes).trim().to_string()
+}
+```
+
+### Building the Spin app
+
+```sh
+cd thecalculaterspin
+
+# Step 1: compile the Spin handler to WASM
+cargo build --target wasm32-wasip2 --release
+
+# Step 2: compose — plug the-calculater into the Spin component
+wac plug --plug ../the-calculater/the-calculater.wasm \
+  target/wasm32-wasip2/release/thecalculaterspin.wasm \
+  -o thecalculaterspin-composed.wasm
+```
+
+Or in one command via `spin.toml`'s build hook:
+
+```sh
+spin build
+```
+
+### Running and calling the API
+
+```sh
+spin up --listen 127.0.0.1:3000
+```
+
+```sh
+# Arithmetic
+curl "http://127.0.0.1:3000/?expr=add(2,3)"         # → 5
+curl "http://127.0.0.1:3000/?expr=multiply(6,7)"    # → 42
+curl "http://127.0.0.1:3000/?expr=divide(9,3)"      # → 3
+
+# Trigonometric (degrees)
+curl "http://127.0.0.1:3000/?expr=sin(30)"          # → 0.5
+curl "http://127.0.0.1:3000/?expr=arctan(1)"        # → 45
+
+# Logarithmic
+curl "http://127.0.0.1:3000/?expr=e()"              # → 2.718281828...
+curl "http://127.0.0.1:3000/?expr=ln(2.718281828)"  # → ~1
+
+# Statistics
+curl "http://127.0.0.1:3000/?expr=sum(1,2,3,4,5)"  # → 15
+curl "http://127.0.0.1:3000/?expr=avg(1,2,3,4,5)"  # → 3
+
+# POST body
+curl -X POST "http://127.0.0.1:3000/" --data "multiply(6,7)"  # → 42
+```
+
+### What this demonstrates
+
+A few things stand out about this workflow:
+
+**WASM composition scales to real services.** The same `wac plug` command used to compose five calculator sub-components is used again here — this time to embed a 32 MB composed binary inside a Spin HTTP handler. The mechanism is identical.
+
+**The interface contract is the API.** The Spin handler doesn't know that `the-calculater` is made of Rust, TypeScript, C#, and Python. It sees one WIT interface: `calculate(string) → string`. Language implementation details are invisible at composition time.
+
+**Cold start is fast.** Because WebAssembly modules are pre-compiled and sandboxed, Spin can instantiate the component per-request with very low overhead — no JVM startup, no Python interpreter initialization on the hot path.
+
+The full source for `thecalculaterspin` is in the [scientificcalculater repository](https://github.com/uhansen/scientificcalculater).

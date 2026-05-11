@@ -61,6 +61,9 @@ Exports a `statistics` interface with:
 - `sum(numbers: list<f64>) -> f64` — sum of a list of numbers
 - `avg(numbers: list<f64>) -> f64` — arithmetic mean (returns 0.0 for empty list)
 
+### `thecalculaterspin` (Rust, Spin v4 HTTP app)
+An HTTP application built with [Spin](https://spinframework.dev) that wraps `the-calculater` and exposes it over HTTP. Expressions are passed as a `?expr=` query parameter or as a plain-text POST body; results are returned as plain text.
+
 ## Prerequisites
 
 Install the tools required for the languages you want to build. All five are needed to compose `the-calculater`.
@@ -90,6 +93,13 @@ Requires [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0).
 Requires Python 3.10+ and `componentize-py`:
 ```sh
 pip install componentize-py
+```
+
+### `thecalculaterspin` (Spin HTTP app)
+Requires [Spin v4](https://spinframework.dev/install) in addition to the Rust toolchain and `wac-cli` listed above:
+```sh
+# Install Spin
+curl -fsSL https://spinframework.dev/downloads/install.sh | bash
 ```
 
 ## Build
@@ -184,6 +194,27 @@ Verify the composed component exposes only the single `calculate` export and no 
 ```sh
 wasm-tools component wit the-calculater/the-calculater.wasm | grep -E "^  (import|export)"
 ```
+
+### Step 7 — Build and run: thecalculaterspin
+
+```sh
+cd thecalculaterspin
+
+# Compile to WASM and compose with the-calculater
+spin build
+
+# Start the HTTP server
+spin up --listen 127.0.0.1:3000
+```
+
+Test in another terminal:
+```sh
+curl "http://127.0.0.1:3000/?expr=add(2,3)"      # → 5
+curl "http://127.0.0.1:3000/?expr=sin(30)"        # → 0.5
+curl "http://127.0.0.1:3000/?expr=multiply(6,7)"  # → 42
+```
+
+See **[Run with Spin](#run-with-spin-thecalculaterspin)** below for the full list of curl examples.
 
 ## Run with wasmtime
 
