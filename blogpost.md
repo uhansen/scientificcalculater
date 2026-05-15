@@ -64,7 +64,7 @@ The **Component Model** is a specification from the [Bytecode Alliance](https://
 A WIT interface looks like this:
 
 ```wit
-package docs:arithmetic-calculator@0.1.0;
+package buildbyhansen:arithmetic-calculator@0.1.0;
 
 interface arithmetic {
     add: func(x: f64, y: f64) -> f64;
@@ -106,13 +106,13 @@ The shell declares its imports in WIT:
 
 ```wit
 world the-calculater {
-    import docs:arithmetic-calculator/arithmetic@0.1.0;
-    import docs:trigonometric-calculator/trigonometric@0.1.0;
-    import docs:moddiv/moddiv@0.1.0;
-    import docs:logaritmic-calculater/logaritmic@0.1.0;
-    import docs:statistics-calculator/statistics@0.1.0;
+    import buildbyhansen:arithmetic-calculator/arithmetic@0.1.0;
+    import buildbyhansen:trigonometric-calculator/trigonometric@0.1.0;
+    import buildbyhansen:moddiv/moddiv@0.1.0;
+    import buildbyhansen:logaritmic-calculater/logaritmic@0.1.0;
+    import buildbyhansen:statistics-calculator/statistics@0.1.0;
 
-    export docs:the-calculater/calculator@0.1.0;
+    export buildbyhansen:the-calculater/calculator@0.1.0;
 }
 ```
 
@@ -143,7 +143,7 @@ Components can be combined without access to source code. A C# component is as c
 Because each component's imports and exports are explicit and verified, you can reason about what a composed system can and cannot do before running it.
 
 **Reusable, versioned building blocks**  
-A component that implements `docs:arithmetic-calculator/arithmetic@0.1.0` can be swapped for any other conforming implementation. This enables a registry-based ecosystem of interchangeable components — much like npm or crates.io, but language-neutral and with strong interface contracts.
+A component that implements `buildbyhansen:arithmetic-calculator/arithmetic@0.1.0` can be swapped for any other conforming implementation. This enables a registry-based ecosystem of interchangeable components — much like npm or crates.io, but language-neutral and with strong interface contracts.
 
 ---
 
@@ -177,7 +177,7 @@ HTTP request
 ┌─────────────────────────────┐
 │  thecalculaterspin          │  ← Spin HTTP app (Rust, wasm32-wasip2)
 │  exports wasi:http/handler  │
-│  imports docs:the-calculater│
+│  imports buildbyhansen:the-calculater│
 └────────────┬────────────────┘
              │  (composed in by wac plug)
              ▼
@@ -208,12 +208,12 @@ wit_bindgen::generate!({
 #[http_service]
 async fn handle(req: Request) -> impl IntoResponse {
     let expr = get_expr(req).await;
-    let result = docs::the_calculater::calculator::calculate(&expr);
+    let result = buildbyhansen::the_calculater::calculator::calculate(&expr);
     (StatusCode::OK, result)
 }
 ```
 
-`wit_bindgen::generate!` reads the local WIT file that declares the import of `docs:the-calculater/calculator@0.1.0`, and generates the Rust bindings. The `calculate()` call looks like a normal function call — the Component Model handles the rest.
+`wit_bindgen::generate!` reads the local WIT file that declares the import of `buildbyhansen:the-calculater/calculator@0.1.0`, and generates the Rust bindings. The `calculate()` call looks like a normal function call — the Component Model handles the rest.
 
 Expressions are passed as a `?expr=` query parameter on GET requests:
 

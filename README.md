@@ -16,7 +16,7 @@ WebAssembly components built in Rust, TypeScript, C#, and Python, following the 
 
 ### `the-calculater` (Rust shell — composed from all five sub-components)
 A composed WASM component that bundles all five calculators into a single binary.
-Exports the `docs:the-calculater/calculator@0.1.0` interface with one method:
+Exports the `buildbyhansen:the-calculater/calculator@0.1.0` interface with one method:
 
 ```
 calculate(expr: string) -> string
